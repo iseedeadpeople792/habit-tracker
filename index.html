@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Трекер привычек</title>
+<style>
+  :root{--bg:#fff;--fg:#1a1d21;--card:#f3f5f8;--accent:#2f9e6b;--muted:#7b8794}
+  @media(prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e8eaed;--card:#1d2226}}
+  body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+  main{max-width:560px;margin:0 auto;padding:32px 16px}
+  form{display:flex;gap:8px;margin-bottom:20px}
+  input{flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--muted);background:var(--card);color:var(--fg);font:inherit}
+  button{border:0;border-radius:10px;background:var(--accent);color:#fff;padding:10px 16px;font:600 1rem system-ui;cursor:pointer}
+  .habit{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+  .habit b{flex:1}.streak{color:var(--muted);font-size:.9rem}
+  .done{background:var(--accent)}.undo{background:transparent;color:var(--muted);padding:6px 10px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Привычки</h1>
+  <form id="form"><input id="name" placeholder="Новая привычка" required maxlength="40"><button>Добавить</button></form>
+  <div id="list"></div>
+</main>
+<script type="module">
+import { bestStreak, currentStreak } from "./streak.js";
+
+const today = new Date().toISOString().slice(0, 10);
+let habits = [];
+try { habits = JSON.parse(localStorage.getItem("habits") || "[]"); } catch {}
+const save = () => { try { localStorage.setItem("habits", JSON.stringify(habits)); } catch {} };
+
+function draw() {
+  const list = document.getElementById("list");
+  list.replaceChildren(...habits.map((h, i) => {
+    const row = document.createElement("div");
+    row.className = "habit";
+    const checked = h.dates.includes(today);
+    const title = Object.assign(document.createElement("b"), { textContent: h.name });
+    const info = Object.assign(document.createElement("span"), {
+      className: "streak",
+      textContent: `серия ${currentStreak(h.dates, today)} · рекорд ${bestStreak(h.dates)}`,
+    });
+    const toggle = Object.assign(document.createElement("button"), {
+      textContent: checked ? "Сделано" : "Отметить",
+      className: checked ? "done" : "",
+      onclick: () => { h.dates = checked ? h.dates.filter((d) => d !== today) : [...h.dates, today]; save(); draw(); },
+    });
+    const del = Object.assign(document.createElement("button"), {
+      textContent: "✕", className: "undo", title: "Удалить",
+      onclick: () => { habits.splice(i, 1); save(); draw(); },
+    });
+    row.append(title, info, toggle, del);
+    return row;
+  }));
+}
+document.getElementById("form").onsubmit = (e) => {
+  e.preventDefault();
+  const input = document.getElementById("name");
+  habits.push({ name: input.value.trim(), dates: [] });
+  input.value = "";
+  save();
+  draw();
+};
+draw();
+</script>
+</body>
+</html>
